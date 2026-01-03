@@ -18,8 +18,14 @@ SIMILARITY_TARGET = 10
 log = logging.getLogger(__name__)
 
 
-async def lookup(info_hash: bytes, timeout: float = DEFAULT_TIMEOUT) -> list[InetAddr]:
+async def lookup(
+    info_hash: bytes,
+    timeout: float = DEFAULT_TIMEOUT,
+    similarity_target: int = SIMILARITY_TARGET,
+    all_peers: bool = False,
+) -> list[InetAddr]:
     nodes = NodeTable(info_hash)
+    peer_set = set()
     async with await create_dht_client(get_node_id()) as client:
         log.info('Issuing "get_peers" query to bootstrap node ...')
         r = await client.get_peers(BOOTSTRAP_NODE, info_hash, timeout=timeout)
@@ -28,6 +34,7 @@ async def lookup(info_hash: bytes, timeout: float = DEFAULT_TIMEOUT) -> list[Ine
             len(r.peers),
             len(r.nodes),
         )
+        peer_set.update(r.peers)
         nodes.extend(r.nodes)
         while (n := nodes.pop_nearest()) is not None:
             try:
@@ -47,9 +54,13 @@ async def lookup(info_hash: bytes, timeout: float = DEFAULT_TIMEOUT) -> list[Ine
                     len(r.peers),
                     len(r.nodes),
                 )
+                peer_set.update(r.peers)
                 nodes.extend(r.nodes)
-                if similarity(n.id, info_hash) >= SIMILARITY_TARGET and r.peers:
-                    return r.peers
+                if similarity(n.id, info_hash) >= similarity_target and r.peers:
+                    if all_peers:
+                        return r.peers
+                    else:
+                        return list(peer_set)
         raise RuntimeError("Could not find close enough node with peers")
 
 

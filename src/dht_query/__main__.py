@@ -12,7 +12,7 @@ import click
 import colorlog
 from .bencode import bencode, unbencode
 from .consts import DEFAULT_TIMEOUT, UDP_PACKET_LEN
-from .lookup import lookup
+from .lookup import SIMILARITY_TARGET, lookup
 from .types import InetAddr, parse_info_hash
 from .util import (
     expand_ip,
@@ -132,9 +132,14 @@ def set_node_id_cmd(ip: IPv4Address | None) -> None:
 
 
 @main.command("lookup")
+@click.option("-a", "--all-peers", is_flag=True)
+@click.option("-s", "--similarity", type=int, default=SIMILARITY_TARGET)
+@click.option("-t", "--timeout", type=float, default=DEFAULT_TIMEOUT)
 @click.option("-o", "--outfile", type=click.File("w"), default="-")
 @click.argument("info_hash", type=parse_info_hash)
-def lookup_cmd(info_hash: bytes, outfile: IO[str]) -> None:
+def lookup_cmd(
+    info_hash: bytes, outfile: IO[str], timeout: float, similarity: int, all_peers: bool
+) -> None:
     colorlog.basicConfig(
         format="%(log_color)s%(asctime)s [%(levelname)-8s] %(message)s",
         datefmt="%H:%M:%S",
@@ -148,7 +153,7 @@ def lookup_cmd(info_hash: bytes, outfile: IO[str]) -> None:
         level=logging.DEBUG,
         stream=sys.stderr,
     )
-    peers = anyio.run(lookup, info_hash)
+    peers = anyio.run(lookup, info_hash, timeout, similarity, all_peers)
     with outfile:
         for p in peers:
             print(p, file=outfile)
