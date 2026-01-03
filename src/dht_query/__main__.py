@@ -1,9 +1,11 @@
 from __future__ import annotations
 from dataclasses import dataclass
+from ipaddress import IPv4Address, IPv6Address
 from pprint import pprint
 import random
 import socket
 from types import TracebackType
+from typing import Any
 import click
 from .bencode import bencode, unbencode
 
@@ -90,11 +92,24 @@ def ping(addr: InetAddr) -> None:
         conn.send(bencode(query))
         reply = conn.recv()
         msg = unbencode(reply)
+        expand_ip(msg)
         pprint(msg)
 
 
 def gen_transaction_id() -> bytes:
     return random.randbytes(TRANSACTION_ID_LEN)
+
+
+def expand_ip(msg: dict[bytes, Any]) -> None:
+    if (addr := msg.get(b"ip")) is not None and isinstance(addr, bytes):
+        if len(addr) == 6:
+            ip4 = IPv4Address(addr[:4])
+            port = int.from_bytes(addr[4:])
+            msg[b"ip"] = (ip4, port)
+        elif len(addr) == 18:
+            ip6 = IPv6Address(addr[:16])
+            port = int.from_bytes(addr[16:])
+            msg[b"ip"] = (ip6, port)
 
 
 if __name__ == "__main__":
