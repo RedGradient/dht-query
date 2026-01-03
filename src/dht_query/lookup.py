@@ -142,7 +142,7 @@ class NodeTable:
     def extend(self, nodes: list[Node]) -> None:
         for n in nodes:
             if (addr := n.address) not in self.seen_addrs:
-                t = (-similarity(n.id, self.info_hash), self.counter, n)
+                t = (xor_bytes(n.id, self.info_hash), -self.counter, n)
                 self.counter += 1
                 heapq.heappush(self.nodes, t)
                 self.seen_addrs.add(addr)
@@ -184,3 +184,8 @@ def similarity(bs1: bytes, bs2: bytes) -> int:
                     break
             break
     return sim
+
+
+def xor_bytes(bs1: bytes, bs2: bytes) -> int:
+    bx = bytes([b1 ^ b2 for (b1, b2) in zip(bs1, bs2)])
+    return int.from_bytes(bx)
