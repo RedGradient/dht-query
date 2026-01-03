@@ -58,9 +58,9 @@ async def lookup(
                 nodes.extend(r.nodes)
                 if similarity(n.id, info_hash) >= similarity_target and r.peers:
                     if all_peers:
-                        return r.peers
-                    else:
                         return list(peer_set)
+                    else:
+                        return r.peers
         raise RuntimeError("Could not find close enough node with peers")
 
 
