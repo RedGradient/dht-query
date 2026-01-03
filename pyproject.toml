@@ -34,6 +34,7 @@ classifiers = [
 
 dependencies = [
     "click ~= 8.2",
+    "platformdirs ~= 4.5",
 ]
 
 [project.scripts]

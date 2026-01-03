@@ -1,21 +1,22 @@
 from __future__ import annotations
+from binascii import crc32
 from collections.abc import Iterator
 from dataclasses import dataclass
 from ipaddress import IPv4Address, IPv6Address
+from pathlib import Path
 from pprint import pprint
 import random
 import socket
 from typing import Any
 import click
+from platformdirs import user_state_path
 from .bencode import bencode, unbencode
-
-MY_NODE_ID = bytes.fromhex("e2bbceb25a531beca0489e46fd2a68b084363c09")
 
 UDP_PACKET_LEN = 65535
 
 TRANSACTION_ID_LEN = 2
 
-TIMEOUT = 60.0
+DEFAULT_TIMEOUT = 60.0
 
 
 @dataclass
@@ -62,14 +63,14 @@ def main() -> None:
 
 
 @main.command()
-@click.option("-t", "--timeout", type=float, default=TIMEOUT)
+@click.option("-t", "--timeout", type=float, default=DEFAULT_TIMEOUT)
 @click.argument("addr", type=InetAddr.parse)
 def ping(addr: InetAddr, timeout: float) -> None:
     query = {
         b"t": gen_transaction_id(),
         b"y": b"q",
         b"q": b"ping",
-        b"a": {b"id": MY_NODE_ID},
+        b"a": {b"id": get_node_id()},
         b"v": b"TEST",
         b"ro": 1,
     }
@@ -80,7 +81,7 @@ def ping(addr: InetAddr, timeout: float) -> None:
 
 
 @main.command()
-@click.option("-t", "--timeout", type=float, default=TIMEOUT)
+@click.option("-t", "--timeout", type=float, default=DEFAULT_TIMEOUT)
 @click.option("--want4", is_flag=True)
 @click.option("--want6", is_flag=True)
 @click.argument("addr", type=InetAddr.parse)
@@ -93,7 +94,7 @@ def get_peers(
         b"y": b"q",
         b"q": b"get_peers",
         b"a": {
-            b"id": MY_NODE_ID,
+            b"id": get_node_id(),
             b"info_hash": infohash,
         },
         b"v": b"TEST",
@@ -115,14 +116,14 @@ def get_peers(
 
 
 @main.command()
-@click.option("-t", "--timeout", type=float, default=TIMEOUT)
+@click.option("-t", "--timeout", type=float, default=DEFAULT_TIMEOUT)
 @click.argument("addr", type=InetAddr.parse)
 def error(addr: InetAddr, timeout: float) -> None:
     query = {
         b"t": gen_transaction_id(),
         b"y": b"q",
         b"q": b"poke",
-        b"a": {b"id": MY_NODE_ID},
+        b"a": {b"id": get_node_id()},
         b"v": b"TEST",
         b"ro": 1,
     }
@@ -132,7 +133,37 @@ def error(addr: InetAddr, timeout: float) -> None:
     pprint(msg)
 
 
-def chat(addr: InetAddr, msg: bytes, timeout: float = TIMEOUT) -> bytes:
+@main.command("get-node-id")
+def get_node_id_cmd() -> None:
+    print(get_node_id().hex())
+
+
+@main.command("set-node-id")
+@click.option("--ip", type=IPv4Address)
+def set_node_id_cmd(ip: IPv4Address | None) -> None:
+    if ip is None:
+        node_id = random.randbytes(20)
+    else:
+        ba = bytearray(ip.packed)
+        ba[0] &= 0x03
+        ba[1] &= 0x0F
+        ba[2] &= 0x3F
+        ba[3] &= 0xFF
+        rand = random.randrange(256)
+        ba[0] |= (rand & 0x07) << 5
+        crc = crc32(ba)
+        node_id0 = bytearray()
+        node_id0.append((crc >> 24) & 0xFF)
+        node_id0.append((crc >> 16) & 0xFF)
+        node_id0.append(((crc >> 8) & 0xF8) | random.randrange(8))
+        node_id0.extend(random.randbytes(16))
+        node_id0.append(rand)
+        node_id = bytes(node_id0)
+    print(node_id.hex())
+    set_node_id(node_id)
+
+
+def chat(addr: InetAddr, msg: bytes, timeout: float = DEFAULT_TIMEOUT) -> bytes:
     with socket.socket(type=socket.SOCK_DGRAM) as s:
         s.settimeout(timeout)
         s.bind(("0.0.0.0", 0))
@@ -200,6 +231,23 @@ def split_bytes(bs: bytes, size: int) -> Iterator[bytes]:
         else:
             raise ValueError("short bytes")
         bs = bs[size:]
+
+
+def node_id_file() -> Path:
+    return user_state_path("dht-query", "jwodder") / "node-id.dat"
+
+
+def get_node_id() -> bytes:
+    try:
+        return node_id_file().read_bytes()
+    except FileNotFoundError:
+        raise RuntimeError("No node ID set; generate one with `set-node-id` subcommand")
+
+
+def set_node_id(bs: bytes) -> None:
+    p = node_id_file()
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_bytes(bs)
 
 
 if __name__ == "__main__":
