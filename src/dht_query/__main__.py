@@ -35,6 +35,13 @@ class InetAddr:
         return cls(host=host, port=port)
 
 
+def parse_info_hash(s: str) -> bytes:
+    bs = bytes.fromhex(s)
+    if len(bs) != 20:
+        raise ValueError("info hashes must be 20 bytes long")
+    return bs
+
+
 @dataclass
 class UdpSocket:
     s: socket.SocketType
@@ -89,6 +96,38 @@ def ping(addr: InetAddr) -> None:
             b"v": b"TEST",
             b"ro": 1,
         }
+        conn.send(bencode(query))
+        reply = conn.recv()
+        msg = unbencode(reply)
+        expand_ip(msg)
+        pprint(msg)
+
+
+@main.command()
+@click.option("--want4", is_flag=True)
+@click.option("--want6", is_flag=True)
+@click.argument("addr", type=InetAddr.parse)
+@click.argument("infohash", type=parse_info_hash)
+def get_peers(addr: InetAddr, infohash: bytes, want4: bool, want6: bool) -> None:
+    with UdpSocket().connect(addr) as conn:
+        query: dict[bytes, Any] = {
+            b"t": gen_transaction_id(),
+            b"y": b"q",
+            b"q": b"get_peers",
+            b"a": {
+                b"id": MY_NODE_ID,
+                b"info_hash": infohash,
+            },
+            b"v": b"TEST",
+            b"ro": 1,
+        }
+        if want4 or want6:
+            want = []
+            if want4:
+                want.append(b"n4")
+            if want6:
+                want.append(b"n6")
+            query[b"a"][b"want"] = want
         conn.send(bencode(query))
         reply = conn.recv()
         msg = unbencode(reply)
