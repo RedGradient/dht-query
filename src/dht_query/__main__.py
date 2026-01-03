@@ -1,4 +1,5 @@
 from __future__ import annotations
+from collections.abc import Iterator
 from dataclasses import dataclass
 from ipaddress import IPv4Address, IPv6Address
 from pprint import pprint
@@ -32,6 +33,19 @@ class InetAddr:
         except ValueError:
             raise ValueError(f"invalid address: {s!r}")
         return cls(host=host, port=port)
+
+
+@dataclass
+class Node:
+    id: bytes
+    ip: IPv4Address | IPv6Address
+    port: int
+
+    @classmethod
+    def from_compact(cls, bs: bytes) -> Node:
+        nid = bs[:20]
+        (ip, port) = uncompact_addr(bs[20:])
+        return cls(id=nid, ip=ip, port=port)
 
 
 def parse_info_hash(s: str) -> bytes:
@@ -91,6 +105,7 @@ def get_peers(addr: InetAddr, infohash: bytes, want4: bool, want6: bool) -> None
     reply = chat(addr, bencode(query))
     msg = unbencode(reply)
     expand_ip(msg)
+    expand_nodes(msg)
     pprint(msg)
 
 
@@ -109,14 +124,49 @@ def gen_transaction_id() -> bytes:
 
 def expand_ip(msg: dict[bytes, Any]) -> None:
     if (addr := msg.get(b"ip")) is not None and isinstance(addr, bytes):
-        if len(addr) == 6:
-            ip4 = IPv4Address(addr[:4])
-            port = int.from_bytes(addr[4:])
-            msg[b"ip"] = (ip4, port)
-        elif len(addr) == 18:
-            ip6 = IPv6Address(addr[:16])
-            port = int.from_bytes(addr[16:])
-            msg[b"ip"] = (ip6, port)
+        try:
+            msg[b"ip"] = uncompact_addr(addr)
+        except ValueError:
+            pass
+
+
+def expand_nodes(msg: dict[bytes, Any]) -> None:
+    if (bs := msg.get(b"r", {}).get(b"nodes")) is not None and isinstance(bs, bytes):
+        try:
+            nodes = [Node.from_compact(n) for n in split_bytes(bs, 26)]
+        except ValueError:
+            pass
+        else:
+            msg[b"r"][b"nodes"] = nodes
+    if (bs := msg.get(b"r", {}).get(b"nodes6")) is not None and isinstance(bs, bytes):
+        try:
+            nodes = [Node.from_compact(n) for n in split_bytes(bs, 38)]
+        except ValueError:
+            pass
+        else:
+            msg[b"r"][b"nodes6"] = nodes
+
+
+def uncompact_addr(bs: bytes) -> tuple[IPv4Address | IPv6Address, int]:
+    if len(bs) == 6:
+        ip4 = IPv4Address(bs[:4])
+        port = int.from_bytes(bs[4:])
+        return (ip4, port)
+    elif len(bs) == 18:
+        ip6 = IPv6Address(bs[:16])
+        port = int.from_bytes(bs[16:])
+        return (ip6, port)
+    else:
+        raise ValueError(f"Compact address has invalid length {len(bs)}")
+
+
+def split_bytes(bs: bytes, size: int) -> Iterator[bytes]:
+    while bs:
+        if len(bs) >= size:
+            yield bs[:size]
+        else:
+            raise ValueError("short bytes")
+        bs = bs[size:]
 
 
 if __name__ == "__main__":
