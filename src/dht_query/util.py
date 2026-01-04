@@ -33,7 +33,7 @@ def expand_nodes(msg: dict[bytes, Any], strict: bool = False) -> None:
             else:
                 msg[b"r"][b"nodes"] = nodes
         elif strict:
-            raise TypeError(f"r.nodes is {type(bs)} instead of bytes")
+            raise TypeError(f"r.nodes is {type(bs).__name__} instead of bytes")
     if (bs := msg.get(b"r", {}).get(b"nodes6")) is not None:
         if isinstance(bs, bytes):
             try:
@@ -46,7 +46,7 @@ def expand_nodes(msg: dict[bytes, Any], strict: bool = False) -> None:
             else:
                 msg[b"r"][b"nodes6"] = nodes
         elif strict:
-            raise TypeError(f"r.nodes6 is {type(bs)} instead of bytes")
+            raise TypeError(f"r.nodes6 is {type(bs).__name__} instead of bytes")
 
 
 def expand_values(msg: dict[bytes, Any], strict: bool = False) -> None:
@@ -59,7 +59,7 @@ def expand_values(msg: dict[bytes, Any], strict: bool = False) -> None:
             else:
                 msg[b"r"][b"values"] = lst2
         elif strict:
-            raise TypeError(f"r.values is {type(lst)} instead of list")
+            raise TypeError(f"r.values is {type(lst).__name__} instead of list")
 
 
 def split_bytes(bs: bytes, size: int) -> Iterator[bytes]:
