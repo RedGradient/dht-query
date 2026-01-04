@@ -30,12 +30,16 @@ class Lookup:
         nodes = NodeTable(self.info_hash)
         peer_set = set()
         async with await create_dht_client(get_node_id()) as client:
-            log.info('Issuing "get_peers" query to bootstrap node ...')
+            log.info(
+                'Issuing "get_peers" query to bootstrap node at %s ...',
+                self.bootstrap_node,
+            )
             r = await client.get_peers(
                 self.bootstrap_node, self.info_hash, timeout=self.timeout
             )
             log.info(
-                "Bootstrap node returned %s and %s",
+                "Bootstrap node at %s returned %s and %s",
+                self.bootstrap_node,
                 quantify(len(r.peers), "peer"),
                 quantify(len(r.nodes), "node"),
             )
