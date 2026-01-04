@@ -1,11 +1,13 @@
 from __future__ import annotations
 from dataclasses import dataclass
+from functools import total_ordering
 from ipaddress import IPv4Address, IPv6Address
 import re
 import socket
 from typing import Any
 
 
+@total_ordering
 @dataclass(frozen=True)
 class InetAddr:
     host: str | IPv4Address | IPv6Address
@@ -59,6 +61,17 @@ class InetAddr:
             return f"[{self.host}]:{self.port}"
         else:
             return f"{self.host}:{self.port}"
+
+    def _cmpkey(self) -> tuple[int, str | IPv4Address | IPv6Address, int]:
+        if isinstance(self.host, str):
+            return (0, self.host, self.port)
+        elif isinstance(self.host, IPv4Address):
+            return (4, self.host, self.port)
+        else:
+            return (6, self.host, self.port)
+
+    def __lt__(self, other: InetAddr) -> bool:
+        return self._cmpkey() < other._cmpkey()
 
     def resolve(self) -> tuple[socket.AddressFamily, str, int]:
         if isinstance(self.host, str):

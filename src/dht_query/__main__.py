@@ -173,7 +173,7 @@ def lookup_cmd(
         lkp.bootstrap_node = bootstrap_node
     peers = anyio.run(lkp.run)
     with outfile:
-        for p in peers:
+        for p in sorted(peers):
             print(p, file=outfile)
 
 

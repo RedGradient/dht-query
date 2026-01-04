@@ -4,8 +4,6 @@
       node ID is compliant
 - `lookup`:
     - Add an option to stop iff a certain number of total peers are found?
-    - Output peers in sorted order? (IPv4 before IPv6, each type sorted by (IP
-      bytes, port))
 - Add a dedicated `InfoHash` type?
 - Replace `parse_info_hash()` with an `InfoHashParam` type?
 - Replace/wrap `InetAddr.parse()` with an `InetAddrParam` type?
