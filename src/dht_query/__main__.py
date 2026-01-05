@@ -13,7 +13,7 @@ import colorlog
 from .bencode import bencode, unbencode
 from .consts import DEFAULT_TIMEOUT, UDP_PACKET_LEN
 from .lookup import DEFAULT_SIMILARITY_TARGET, Lookup
-from .types import InetAddr, NodeId, parse_info_hash
+from .types import InetAddr, InfoHash, NodeId
 from .util import (
     expand_id,
     expand_ip,
@@ -25,6 +25,52 @@ from .util import (
 )
 
 
+class InetAddrParam(click.ParamType):
+    name = "inetaddr"
+
+    def convert(
+        self,
+        value: str | InetAddr,
+        param: click.Parameter | None,
+        ctx: click.Context | None,
+    ) -> InetAddr:
+        if isinstance(value, str):
+            try:
+                return InetAddr.parse(value)
+            except ValueError as e:
+                self.fail(f"{value!r}: {e}", param, ctx)
+        else:
+            return value
+
+    def get_metavar(
+        self, param: click.Parameter, ctx: click.Context | None = None  # noqa: U100
+    ) -> str:
+        return "HOST:PORT"
+
+
+class InfoHashParam(click.ParamType):
+    name = "infohash"
+
+    def convert(
+        self,
+        value: str | InfoHash,
+        param: click.Parameter | None,
+        ctx: click.Context | None,
+    ) -> InfoHash:
+        if isinstance(value, str):
+            try:
+                return InfoHash(value)
+            except ValueError as e:
+                self.fail(f"{value!r}: {e}", param, ctx)
+        else:
+            return value
+
+    def get_metavar(
+        self, param: click.Parameter, ctx: click.Context | None = None  # noqa: U100
+    ) -> str:
+        return "INFOHASH"
+
+
 @click.group(context_settings={"help_option_names": ["-h", "--help"]})
 def main() -> None:
     """Query the DHT"""
@@ -33,7 +79,7 @@ def main() -> None:
 
 @main.command()
 @click.option("-t", "--timeout", type=float, default=DEFAULT_TIMEOUT)
-@click.argument("addr", type=InetAddr.parse)
+@click.argument("addr", type=InetAddrParam())
 def ping(addr: InetAddr, timeout: float) -> None:
     query = {
         b"t": gen_transaction_id(),
@@ -54,10 +100,10 @@ def ping(addr: InetAddr, timeout: float) -> None:
 @click.option("-t", "--timeout", type=float, default=DEFAULT_TIMEOUT)
 @click.option("--want4", is_flag=True)
 @click.option("--want6", is_flag=True)
-@click.argument("addr", type=InetAddr.parse)
-@click.argument("infohash", type=parse_info_hash)
+@click.argument("addr", type=InetAddrParam())
+@click.argument("info_hash", type=InfoHashParam())
 def get_peers(
-    addr: InetAddr, infohash: bytes, timeout: float, want4: bool, want6: bool
+    addr: InetAddr, info_hash: InfoHash, timeout: float, want4: bool, want6: bool
 ) -> None:
     query: dict[bytes, Any] = {
         b"t": gen_transaction_id(),
@@ -65,7 +111,7 @@ def get_peers(
         b"q": b"get_peers",
         b"a": {
             b"id": bytes(get_node_id()),
-            b"info_hash": infohash,
+            b"info_hash": bytes(info_hash),
         },
         b"v": b"TEST",
         b"ro": 1,
@@ -88,7 +134,7 @@ def get_peers(
 
 @main.command()
 @click.option("-t", "--timeout", type=float, default=DEFAULT_TIMEOUT)
-@click.argument("addr", type=InetAddr.parse)
+@click.argument("addr", type=InetAddrParam())
 def error(addr: InetAddr, timeout: float) -> None:
     query = {
         b"t": gen_transaction_id(),
@@ -137,13 +183,13 @@ def set_node_id_cmd(ip: IPv4Address | None) -> None:
 
 @main.command("lookup")
 @click.option("-a", "--all-peers", is_flag=True)
-@click.option("-B", "--bootstrap-node", type=InetAddr.parse)
+@click.option("-B", "--bootstrap-node", type=InetAddrParam())
 @click.option("-s", "--similarity", type=int, default=DEFAULT_SIMILARITY_TARGET)
 @click.option("-t", "--timeout", type=float, default=DEFAULT_TIMEOUT)
 @click.option("-o", "--outfile", type=click.File("w"), default="-")
-@click.argument("info_hash", type=parse_info_hash)
+@click.argument("info_hash", type=InfoHashParam())
 def lookup_cmd(
-    info_hash: bytes,
+    info_hash: InfoHash,
     outfile: IO[str],
     timeout: float,
     similarity: int,

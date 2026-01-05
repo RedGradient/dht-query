@@ -8,7 +8,7 @@ from anyio import create_udp_socket, fail_after
 from anyio.abc import AsyncResource, UDPSocket
 from .bencode import UnbencodeError, bencode, unbencode
 from .consts import DEFAULT_TIMEOUT
-from .types import InetAddr, Node, NodeId
+from .types import InetAddr, InfoHash, Node, NodeId
 from .util import expand_nodes, expand_values, gen_transaction_id, get_node_id, quantify
 
 DEFAULT_BOOTSTRAP_NODE = InetAddr(host="router.bittorrent.com", port=6881)
@@ -20,7 +20,7 @@ log = logging.getLogger(__name__)
 
 @dataclass
 class Lookup:
-    info_hash: bytes
+    info_hash: InfoHash
     timeout: float = DEFAULT_TIMEOUT
     similarity_target: int = DEFAULT_SIMILARITY_TARGET
     all_peers: bool = False
@@ -76,8 +76,7 @@ class Lookup:
                     peer_set.update(r.peers)
                     nodes.extend(r.nodes)
                     if (
-                        similarity(bytes(n.id), self.info_hash)
-                        >= self.similarity_target
+                        similarity(n.id, self.info_hash) >= self.similarity_target
                         and r.peers
                     ):
                         if self.all_peers:
@@ -98,7 +97,7 @@ class DhtClient(AsyncResource):
         await self.ipv6.aclose()
 
     async def get_peers(
-        self, addr: InetAddr, info_hash: bytes, timeout: float = DEFAULT_TIMEOUT
+        self, addr: InetAddr, info_hash: InfoHash, timeout: float = DEFAULT_TIMEOUT
     ) -> GetPeersResponse:
         txn_id = gen_transaction_id()
         query: dict[bytes, Any] = {
@@ -107,7 +106,7 @@ class DhtClient(AsyncResource):
             b"q": b"get_peers",
             b"a": {
                 b"id": bytes(self.node_id),
-                b"info_hash": info_hash,
+                b"info_hash": bytes(info_hash),
                 b"want": [b"n4", b"n6"],
             },
             b"v": b"TEST",
@@ -168,7 +167,7 @@ class GetPeersResponse:
 
 @dataclass
 class NodeTable:
-    info_hash: bytes
+    info_hash: InfoHash
     counter: int = field(init=False, default=0)
     nodes: list[tuple[int, int, Node]] = field(init=False, default_factory=list)
     seen_addrs: set[InetAddr] = field(init=False, default_factory=set)
@@ -176,7 +175,7 @@ class NodeTable:
     def extend(self, nodes: list[Node]) -> None:
         for n in nodes:
             if (addr := n.address) not in self.seen_addrs:
-                t = (xor_bytes(bytes(n.id), self.info_hash), -self.counter, n)
+                t = (xor_bytes(bytes(n.id), bytes(self.info_hash)), -self.counter, n)
                 self.counter += 1
                 heapq.heappush(self.nodes, t)
                 self.seen_addrs.add(addr)
@@ -199,12 +198,12 @@ async def create_dht_client(node_id: NodeId) -> DhtClient:
     return DhtClient(node_id=node_id, ipv4=ipv4, ipv6=ipv6)
 
 
-def similarity(bs1: bytes, bs2: bytes) -> int:
+def similarity(nid: NodeId, ih: InfoHash) -> int:
     """
     Returns the number of leading bits of ``bs1`` and ``bs2`` that are equal
     """
     sim = 0
-    for b1, b2 in zip(bs1, bs2):
+    for b1, b2 in zip(bytes(nid), bytes(ih)):
         b = ~(b1 ^ b2) & 0xFF
         if b == 0xFF:
             sim += 8

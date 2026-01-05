@@ -135,8 +135,28 @@ class NodeId:
         return f"NodeId({self.id.hex()!r})"
 
 
-def parse_info_hash(s: str) -> bytes:
-    bs = bytes.fromhex(s)
-    if len(bs) != 20:
-        raise ValueError("info hashes must be 20 bytes long")
-    return bs
+class InfoHash:
+    def __init__(self, info_hash: str | bytes) -> None:
+        if isinstance(info_hash, str):
+            ih = bytes.fromhex(info_hash)
+        if len(ih) != 20:
+            raise ValueError("info hashes must be 20 bytes (40 hex chars) long")
+        self.hash: bytes = ih
+
+    def __eq__(self, other: Any) -> bool:
+        if isinstance(other, InfoHash):
+            return self.hash == other.hash
+        else:
+            return NotImplemented
+
+    def __hash__(self) -> int:
+        return hash(self.hash)
+
+    def __str__(self) -> str:
+        return self.hash.hex()
+
+    def __bytes__(self) -> bytes:
+        return self.hash
+
+    def __repr__(self) -> str:
+        return f"InfoHash({self.hash.hex()!r})"
