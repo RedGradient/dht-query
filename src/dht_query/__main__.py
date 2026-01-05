@@ -18,6 +18,7 @@ from .util import (
     expand_id,
     expand_ip,
     expand_nodes,
+    expand_samples,
     expand_values,
     gen_transaction_id,
     get_node_id,
@@ -69,6 +70,29 @@ class InfoHashParam(click.ParamType):
         self, param: click.Parameter, ctx: click.Context | None = None  # noqa: U100
     ) -> str:
         return "INFOHASH"
+
+
+class NodeIdParam(click.ParamType):
+    name = "node-id"
+
+    def convert(
+        self,
+        value: str | NodeId,
+        param: click.Parameter | None,
+        ctx: click.Context | None,
+    ) -> NodeId:
+        if isinstance(value, str):
+            try:
+                return NodeId(value)
+            except ValueError as e:
+                self.fail(f"{value!r}: {e}", param, ctx)
+        else:
+            return value
+
+    def get_metavar(
+        self, param: click.Parameter, ctx: click.Context | None = None  # noqa: U100
+    ) -> str:
+        return "NODEID"
 
 
 @click.group(context_settings={"help_option_names": ["-h", "--help"]})
@@ -129,6 +153,31 @@ def get_peers(
     expand_id(msg)
     expand_nodes(msg)
     expand_values(msg)
+    pprint(msg)
+
+
+@main.command()
+@click.option("-t", "--timeout", type=float, default=DEFAULT_TIMEOUT)
+@click.argument("addr", type=InetAddrParam())
+@click.argument("target", type=NodeIdParam())
+def sample_infohashes(addr: InetAddr, target: NodeId, timeout: float) -> None:
+    query: dict[bytes, Any] = {
+        b"t": gen_transaction_id(),
+        b"y": b"q",
+        b"q": b"sample_infohashes",
+        b"a": {
+            b"id": bytes(get_node_id()),
+            b"target": bytes(target),
+        },
+        b"v": b"TEST",
+        b"ro": 1,
+    }
+    reply = chat(addr, bencode(query), timeout=timeout)
+    msg = unbencode(reply)
+    expand_ip(msg)
+    expand_id(msg)
+    expand_nodes(msg)
+    expand_samples(msg)
     pprint(msg)
 
 

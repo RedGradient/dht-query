@@ -11,7 +11,6 @@
 - Support BEP 33?
 - Support BEP 44 commands?
 - Support BEP 50?
-- Support BEP 51 commands?
 
 - Fill out `--help` text
 - Fill out README

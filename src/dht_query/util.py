@@ -5,7 +5,7 @@ import random
 from typing import Any
 from platformdirs import user_state_path
 from .consts import TRANSACTION_ID_LEN
-from .types import InetAddr, Node, NodeId
+from .types import InetAddr, InfoHash, Node, NodeId
 
 
 def gen_transaction_id() -> bytes:
@@ -76,6 +76,22 @@ def expand_values(msg: dict[bytes, Any], strict: bool = False) -> None:
                 msg[b"r"][b"values"] = lst2
         elif strict:
             raise TypeError(f"r.values is {type(lst).__name__} instead of list")
+
+
+def expand_samples(msg: dict[bytes, Any], strict: bool = False) -> None:
+    if (bs := msg.get(b"r", {}).get(b"samples")) is not None:
+        if isinstance(bs, bytes):
+            try:
+                samples = [InfoHash(ih) for ih in split_bytes(bs, 20)]
+            except ValueError:
+                if strict:
+                    raise
+                else:
+                    pass
+            else:
+                msg[b"r"][b"samples"] = samples
+        elif strict:
+            raise TypeError(f"r.samples is {type(bs).__name__} instead of bytes")
 
 
 def split_bytes(bs: bytes, size: int) -> Iterator[bytes]:
