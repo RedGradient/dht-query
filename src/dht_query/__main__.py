@@ -158,6 +158,41 @@ def get_peers(
 
 @main.command()
 @click.option("-t", "--timeout", type=float, default=DEFAULT_TIMEOUT)
+@click.option("--want4", is_flag=True)
+@click.option("--want6", is_flag=True)
+@click.argument("addr", type=InetAddrParam())
+@click.argument("node_id", type=NodeIdParam())
+def find_node(
+    addr: InetAddr, node_id: NodeId, timeout: float, want4: bool, want6: bool
+) -> None:
+    query: dict[bytes, Any] = {
+        b"t": gen_transaction_id(),
+        b"y": b"q",
+        b"q": b"find_node",
+        b"a": {
+            b"id": bytes(get_node_id()),
+            b"target": bytes(node_id),
+        },
+        b"v": b"TEST",
+        b"ro": 1,
+    }
+    if want4 or want6:
+        want = []
+        if want4:
+            want.append(b"n4")
+        if want6:
+            want.append(b"n6")
+        query[b"a"][b"want"] = want
+    reply = chat(addr, bencode(query), timeout=timeout)
+    msg = unbencode(reply)
+    expand_ip(msg)
+    expand_id(msg)
+    expand_nodes(msg)
+    pprint(msg)
+
+
+@main.command()
+@click.option("-t", "--timeout", type=float, default=DEFAULT_TIMEOUT)
 @click.argument("addr", type=InetAddrParam())
 @click.argument("target", type=NodeIdParam())
 def sample_infohashes(addr: InetAddr, target: NodeId, timeout: float) -> None:
