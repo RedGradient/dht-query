@@ -7,16 +7,19 @@
   42-compliant
     - Give `get-node-id` an `--ip IP` option to make it also check whether our
       node ID is compliant?
-- `set-node-id`: Support passing IPv6 addresses to `--ip`
 - Add an `announce-peer` command?
 - Give single-packet commands a `--json` option for outputting JSON?
     - Represent bytes fields as hexadecimal
     - Represent `InetAddr` values as `HOST:PORT` strings?
 - Add an `-x`/`--hex` option for pretty-printing unparsed bytes fields as
   `bytes.fromhex('…')`
+- Debug-log local IP address and UDP port?
+
+- Add options controlling whether to use IPv4 and/or IPv6
 - Add an option for setting the UDP port to use?
     - Separate options for IPv4 and IPv6?
-- Add options controlling whether to use IPv4 and/or IPv6
+- Add options for setting the local IPv4 & IPv6 addresses to use?
+- Store inet options (and timeout) in a config file?
 
 - Support BEP 33?
 - Support BEP 44 commands?

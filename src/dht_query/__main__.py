@@ -1,9 +1,10 @@
 from __future__ import annotations
 from binascii import crc32
-from ipaddress import IPv4Address
+from ipaddress import IPv4Address, IPv6Address
 import logging
 from pprint import pprint
 import random
+import re
 import socket
 import sys
 from typing import IO, Any
@@ -93,6 +94,34 @@ class NodeIdParam(click.ParamType):
         self, param: click.Parameter, ctx: click.Context | None = None  # noqa: U100
     ) -> str:
         return "NODEID"
+
+
+class IPParam(click.ParamType):
+    name = "ip"
+
+    def convert(
+        self,
+        value: str | IPv4Address | IPv6Address,
+        param: click.Parameter | None,
+        ctx: click.Context | None,
+    ) -> IPv4Address | IPv6Address:
+        if isinstance(value, str):
+            try:
+                if re.fullmatch(r"\d+\.\d+\.\d+\.\d+", value):
+                    return IPv4Address(value)
+                elif re.fullmatch(r"[A-Fa-f0-9:]+", value):
+                    return IPv6Address(value)
+                else:
+                    raise ValueError("not an IP address")
+            except ValueError as e:
+                self.fail(f"{value!r}: {e}", param, ctx)
+        else:
+            return value
+
+    def get_metavar(
+        self, param: click.Parameter, ctx: click.Context | None = None  # noqa: U100
+    ) -> str:
+        return "IP"
 
 
 @click.group(context_settings={"help_option_names": ["-h", "--help"]})
@@ -241,16 +270,16 @@ def get_node_id_cmd() -> None:
 
 
 @main.command("set-node-id")
-@click.option("--ip", type=IPv4Address)
-def set_node_id_cmd(ip: IPv4Address | None) -> None:
+@click.option("--ip", type=IPParam())
+def set_node_id_cmd(ip: IPv4Address | IPv6Address | None) -> None:
     if ip is None:
         node_id = NodeId(random.randbytes(20))
     else:
-        ba = bytearray(ip.packed)
-        ba[0] &= 0x03
-        ba[1] &= 0x0F
-        ba[2] &= 0x3F
-        ba[3] &= 0xFF
+        if isinstance(ip, IPv4Address):
+            mask = [0x03, 0x0F, 0x3F, 0xFF]
+        else:
+            mask = [0x01, 0x03, 0x07, 0x0F, 0x1F, 0x3F, 0x7F, 0xFF]
+        ba = bytearray([b1 & b2 for b1, b2 in zip(ip.packed, mask)])
         rand = random.randrange(256)
         ba[0] |= (rand & 0x07) << 5
         crc = crc32(ba)
