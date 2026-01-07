@@ -90,6 +90,19 @@ follows:
     A 20-byte ID of a DHT node, specified on the command line as 40 hexadecimal
     digits
 
+``announce-peer``
+-----------------
+
+::
+
+    dht-query announce-peer [-t <timeout>] <host>:<port> <info-hash> <port> <token>
+
+Send an "announce_peer" query for the given info hash to the given node and
+pretty-print the decoded response.  The ``<port>`` argument is the port of the
+peer that is downloading the torrent with the info hash.  The ``<token>``
+argument is a token previously returned in a "get_peers" response from the
+remote node, specified on the command line in hexadecimal.
+
 ``error``
 ---------
 
@@ -128,7 +141,7 @@ Print out the locally-stored node ID in hexadecimal.
 
     dht-query get-peers [-t <timeout>] [--want4] [--want6] <host>:<port> <info-hash>
 
-Send a "get_peers" query for the given infohash to the given node and
+Send a "get_peers" query for the given info hash to the given node and
 pretty-print the decoded response.
 
 The ``--want4`` and/or ``--want6`` options can be supplied to explicitly
@@ -163,9 +176,9 @@ field for searching the node ID space at the same time.
     dht-query search-peers [<options>] <info-hash>
 
 Perform a simple multiquery search for peers downloading the torrent with the
-given infohash.  An initial "get_peers" query is sent to a bootstrap node, and
+given info hash.  An initial "get_peers" query is sent to a bootstrap node, and
 then we repeatedly query the closest known node that hasn't yet been queried
-until we get one or more peers from a node whose ID matches the infohash in
+until we get one or more peers from a node whose ID matches the info hash in
 some number of leading bits.  The peers returned from the final response (or
 all peers found if ``-a`` is given) are then printed out in ``<host>:<port>``
 format.
