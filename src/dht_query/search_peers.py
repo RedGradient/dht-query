@@ -219,4 +219,4 @@ def similarity(nid: NodeId, ih: InfoHash) -> int:
 
 def xor_bytes(bs1: bytes, bs2: bytes) -> int:
     bx = bytes([b1 ^ b2 for (b1, b2) in zip(bs1, bs2)])
-    return int.from_bytes(bx)
+    return int.from_bytes(bx, "big")

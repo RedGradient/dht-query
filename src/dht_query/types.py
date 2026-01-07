@@ -47,11 +47,11 @@ class InetAddr:
     def from_compact(cls, bs: bytes) -> InetAddr:
         if len(bs) == 6:
             ip4 = IPv4Address(bs[:4])
-            port = int.from_bytes(bs[4:])
+            port = int.from_bytes(bs[4:], "big")
             return cls(host=ip4, port=port)
         elif len(bs) == 18:
             ip6 = IPv6Address(bs[:16])
-            port = int.from_bytes(bs[16:])
+            port = int.from_bytes(bs[16:], "big")
             return cls(host=ip6, port=port)
         else:
             raise ValueError(f"Compact address has invalid length {len(bs)}")
