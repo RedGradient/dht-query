@@ -160,3 +160,26 @@ class InfoHash:
 
     def __repr__(self) -> str:
         return f"InfoHash({self.hash.hex()!r})"
+
+
+class PrettyBytes:
+    def __init__(self, value: bytes) -> None:
+        self.value = value
+
+    def __eq__(self, other: Any) -> bool:
+        if isinstance(other, PrettyBytes):
+            return self.value == other.value
+        else:
+            return NotImplemented
+
+    def __hash__(self) -> int:
+        return hash(self.value)
+
+    def __str__(self) -> str:
+        return self.value.hex()
+
+    def __bytes__(self) -> bytes:
+        return self.value
+
+    def __repr__(self) -> str:
+        return f"bytes.fromhex({self.value.hex()!r})"

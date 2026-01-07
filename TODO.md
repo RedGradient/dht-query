@@ -11,10 +11,6 @@
 - Give single-packet commands a `-J`/`--json` option for outputting JSON?
     - Represent bytes fields as hexadecimal
     - Represent `InetAddr` values as `HOST:PORT` strings?
-- Add an `-x`/`--hex` option for pretty-printing unparsed bytes fields as
-  `bytes.fromhex('…')`
-    - Just do this for `r.target` (and `t`?) by wrapping the value in a newtype
-      with a custom repr?
 - Debug-log local IP address and UDP port?
 
 - `lookup`: Add an option to stop iff a certain number of total peers are

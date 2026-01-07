@@ -6,7 +6,7 @@ import random
 from typing import Any
 from platformdirs import user_state_path
 from .consts import TRANSACTION_ID_LEN
-from .types import InetAddr, InfoHash, Node, NodeId
+from .types import InetAddr, InfoHash, Node, NodeId, PrettyBytes
 
 
 def gen_transaction_id() -> bytes:
@@ -54,18 +54,28 @@ def convert_reply(raw: dict[bytes, Any], strict: bool = False) -> dict[str, Any]
                     raise TypeError(
                         f"r.samples is {type(bs).__name__} instead of bytes"
                     )
+            if (token := r.get("token")) is not None:
+                if isinstance(token, bytes):
+                    r["token"] = PrettyBytes(token)
+                elif strict:
+                    raise TypeError(f"r.token is {type(r).__name__} instead of bytes")
         elif strict:
             raise TypeError(f"r is {type(r).__name__} instead of dict")
     if (y := msg.get("y")) is not None:
         if isinstance(y, bytes):
             msg["y"] = y.decode("utf-8", "surrogateescape")
         elif strict:
-            raise TypeError(f"y is {type(r).__name__} instead of bytes")
+            raise TypeError(f"y is {type(y).__name__} instead of bytes")
     if (q := msg.get("q")) is not None:
         if isinstance(q, bytes):
             msg["q"] = q.decode("utf-8", "surrogateescape")
         elif strict:
-            raise TypeError(f"q is {type(r).__name__} instead of bytes")
+            raise TypeError(f"q is {type(q).__name__} instead of bytes")
+    if (t := msg.get("t")) is not None:
+        if isinstance(t, bytes):
+            msg["t"] = PrettyBytes(t)
+        elif strict:
+            raise TypeError(f"t is {type(t).__name__} instead of bytes")
     return msg
 
 
