@@ -33,5 +33,4 @@
     - For "put", this would mean letting the user specify a bencoded data
       value.  How should that be supplied?  Read from a given bencoded file?
 
-- Put on GitHub?
-    - Add a smoke test and CI
+- Fill in keywords & classifiers
