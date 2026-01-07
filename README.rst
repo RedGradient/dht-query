@@ -107,15 +107,6 @@ The ``--want4`` and/or ``--want6`` options can be supplied to explicitly
 request IPv4 and/or IPv6 nodes from the remote node regardless of which IP
 version we're communicating over.
 
-``ping``
---------
-
-::
-
-    dht-query ping [-t <timeout>] <host>:<port>
-
-Send a "ping" query to the given node and pretty-print the decoded response.
-
 ``get-node-id``
 ---------------
 
@@ -123,7 +114,7 @@ Send a "ping" query to the given node and pretty-print the decoded response.
 
     dht-query get-node-id
 
-Prints out the locally-stored node ID in hexadecimal.
+Print out the locally-stored node ID in hexadecimal.
 
 ``get-peers``
 -------------
@@ -146,7 +137,7 @@ version we're communicating over.
 
     dht-query lookup [<options>] <info-hash>
 
-Peform a simple multiquery search for peers downloading the torrent with the
+Perform a simple multiquery search for peers downloading the torrent with the
 given infohash.  An initial "get_peers" query is sent to a bootstrap node, and
 then we repeatedly query the closest known node that hasn't yet been queried
 until we get one or more peers from a node whose ID matches the infohash in
@@ -176,6 +167,15 @@ Options
 -t TIMEOUT, --timeout TIMEOUT
                                 Specify the maximum number of seconds to wait
                                 for a reply to a query [default: 15]
+
+``ping``
+--------
+
+::
+
+    dht-query ping [-t <timeout>] <host>:<port>
+
+Send a "ping" query to the given node and pretty-print the decoded response.
 
 ``sample-infohashes``
 ---------------------

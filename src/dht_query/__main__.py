@@ -13,7 +13,7 @@ import click
 import colorlog
 from .bencode import bencode, unbencode
 from .consts import CLIENT, DEFAULT_TIMEOUT, UDP_PACKET_LEN
-from .lookup import DEFAULT_SIMILARITY_TARGET, Lookup
+from .lookup import DEFAULT_BOOTSTRAP_NODE, DEFAULT_SIMILARITY_TARGET, Lookup
 from .types import InetAddr, InfoHash, NodeId
 from .util import (
     convert_reply,
@@ -127,9 +127,17 @@ def main() -> None:
 
 
 @main.command()
-@click.option("-t", "--timeout", type=float, default=DEFAULT_TIMEOUT)
+@click.option(
+    "-t",
+    "--timeout",
+    type=float,
+    default=DEFAULT_TIMEOUT,
+    help="Maximum number of seconds to wait for a reply to a query",
+    show_default=True,
+)
 @click.argument("addr", type=InetAddrParam())
 def ping(addr: InetAddr, timeout: float) -> None:
+    """Send a "ping" query to a node and pretty-print the decoded response"""
     query = {
         b"t": gen_transaction_id(),
         b"y": b"q",
@@ -144,14 +152,22 @@ def ping(addr: InetAddr, timeout: float) -> None:
 
 
 @main.command()
-@click.option("-t", "--timeout", type=float, default=DEFAULT_TIMEOUT)
-@click.option("--want4", is_flag=True)
-@click.option("--want6", is_flag=True)
+@click.option(
+    "-t",
+    "--timeout",
+    type=float,
+    default=DEFAULT_TIMEOUT,
+    help="Maximum number of seconds to wait for a reply to a query",
+    show_default=True,
+)
+@click.option("--want4", is_flag=True, help="Request IPv4 nodes")
+@click.option("--want6", is_flag=True, help="Request IPv6 nodes")
 @click.argument("addr", type=InetAddrParam())
 @click.argument("info_hash", type=InfoHashParam())
 def get_peers(
     addr: InetAddr, info_hash: InfoHash, timeout: float, want4: bool, want6: bool
 ) -> None:
+    """Send a "get_peers" query to a node and pretty-print the decoded response"""
     query: dict[bytes, Any] = {
         b"t": gen_transaction_id(),
         b"y": b"q",
@@ -176,14 +192,22 @@ def get_peers(
 
 
 @main.command()
-@click.option("-t", "--timeout", type=float, default=DEFAULT_TIMEOUT)
-@click.option("--want4", is_flag=True)
-@click.option("--want6", is_flag=True)
+@click.option(
+    "-t",
+    "--timeout",
+    type=float,
+    default=DEFAULT_TIMEOUT,
+    help="Maximum number of seconds to wait for a reply to a query",
+    show_default=True,
+)
+@click.option("--want4", is_flag=True, help="Request IPv4 nodes")
+@click.option("--want6", is_flag=True, help="Request IPv6 nodes")
 @click.argument("addr", type=InetAddrParam())
 @click.argument("node_id", type=NodeIdParam())
 def find_node(
     addr: InetAddr, node_id: NodeId, timeout: float, want4: bool, want6: bool
 ) -> None:
+    """Send a "find_node" query to a node and pretty-print the decoded response"""
     query: dict[bytes, Any] = {
         b"t": gen_transaction_id(),
         b"y": b"q",
@@ -208,10 +232,21 @@ def find_node(
 
 
 @main.command()
-@click.option("-t", "--timeout", type=float, default=DEFAULT_TIMEOUT)
+@click.option(
+    "-t",
+    "--timeout",
+    type=float,
+    default=DEFAULT_TIMEOUT,
+    help="Maximum number of seconds to wait for a reply to a query",
+    show_default=True,
+)
 @click.argument("addr", type=InetAddrParam())
 @click.argument("target", type=NodeIdParam())
 def sample_infohashes(addr: InetAddr, target: NodeId, timeout: float) -> None:
+    """
+    Send a "sample_infohashes" query to a node and pretty-print the decoded
+    response
+    """
     query: dict[bytes, Any] = {
         b"t": gen_transaction_id(),
         b"y": b"q",
@@ -229,9 +264,20 @@ def sample_infohashes(addr: InetAddr, target: NodeId, timeout: float) -> None:
 
 
 @main.command()
-@click.option("-t", "--timeout", type=float, default=DEFAULT_TIMEOUT)
+@click.option(
+    "-t",
+    "--timeout",
+    type=float,
+    default=DEFAULT_TIMEOUT,
+    help="Maximum number of seconds to wait for a reply to a query",
+    show_default=True,
+)
 @click.argument("addr", type=InetAddrParam())
 def error(addr: InetAddr, timeout: float) -> None:
+    """
+    Send a query with an invalid method to a node and pretty-print the decoded
+    response
+    """
     query = {
         b"t": gen_transaction_id(),
         b"y": b"q",
@@ -247,12 +293,18 @@ def error(addr: InetAddr, timeout: float) -> None:
 
 @main.command("get-node-id")
 def get_node_id_cmd() -> None:
+    """Print out the locally-stored node ID in hexadecimal"""
     print(get_node_id())
 
 
 @main.command("set-node-id")
-@click.option("--ip", type=IPParam())
+@click.option(
+    "--ip",
+    type=IPParam(),
+    help="Make the new ID valid for the given IP address according to BEP 42",
+)
 def set_node_id_cmd(ip: IPv4Address | IPv6Address | None) -> None:
+    """Randomly generate & store a new node ID to use in outgoing queries"""
     if ip is None:
         node_id = NodeId(random.randbytes(20))
     else:
@@ -276,11 +328,46 @@ def set_node_id_cmd(ip: IPv4Address | IPv6Address | None) -> None:
 
 
 @main.command("lookup")
-@click.option("-a", "--all-peers", is_flag=True)
-@click.option("-B", "--bootstrap-node", type=InetAddrParam())
-@click.option("-o", "--outfile", type=click.File("w"), default="-")
-@click.option("-s", "--similarity", type=int, default=DEFAULT_SIMILARITY_TARGET)
-@click.option("-t", "--timeout", type=float, default=DEFAULT_TIMEOUT)
+@click.option(
+    "-a",
+    "--all-peers",
+    is_flag=True,
+    help="Print out all peers found rather than just those from the last response",
+)
+@click.option(
+    "-B",
+    "--bootstrap-node",
+    type=InetAddrParam(),
+    default=DEFAULT_BOOTSTRAP_NODE,
+    help="Make the initial query to the given node",
+    show_default=True,
+)
+@click.option(
+    "-o",
+    "--outfile",
+    type=click.File("w"),
+    default="-",
+    help="Write the peers to the given file instead of stdout",
+)
+@click.option(
+    "-s",
+    "--similarity",
+    type=int,
+    default=DEFAULT_SIMILARITY_TARGET,
+    help=(
+        "Don't stop until after peers are received from a node whose ID matches"
+        " the infohash in this many leading bits"
+    ),
+    show_default=True,
+)
+@click.option(
+    "-t",
+    "--timeout",
+    type=float,
+    default=DEFAULT_TIMEOUT,
+    help="Maximum number of seconds to wait for a reply to a query",
+    show_default=True,
+)
 @click.argument("info_hash", type=InfoHashParam())
 def lookup_cmd(
     info_hash: InfoHash,
@@ -288,8 +375,12 @@ def lookup_cmd(
     timeout: float,
     similarity: int,
     all_peers: bool,
-    bootstrap_node: InetAddr | None,
+    bootstrap_node: InetAddr,
 ) -> None:
+    """
+    Do a simple search for peers downloading the torrent with the given
+    infohash
+    """
     colorlog.basicConfig(
         format="%(log_color)s%(asctime)s [%(levelname)-8s] %(message)s",
         datefmt="%H:%M:%S",
@@ -308,9 +399,8 @@ def lookup_cmd(
         timeout=timeout,
         similarity_target=similarity,
         all_peers=all_peers,
+        bootstrap_node=bootstrap_node,
     )
-    if bootstrap_node is not None:
-        lkp.bootstrap_node = bootstrap_node
     peers = anyio.run(lkp.run)
     with outfile:
         for p in sorted(peers):

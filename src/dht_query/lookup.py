@@ -116,7 +116,7 @@ class DhtClient(AsyncResource):
         msg = convert_reply(unbencode(reply), strict=True)
         match msg.get("y"):
             case "r":
-                if bytes(msg.get("t")) != txn_id:
+                if (t := msg.get("t")) is None or bytes(t) != txn_id:
                     raise DhtProtoError(
                         "Node replied with different transaction ID than was in query"
                     )

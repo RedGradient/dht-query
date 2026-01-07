@@ -41,6 +41,5 @@
     - For "put", this would mean letting the user specify a bencoded data
       value.  How should that be supplied?  Read from a given bencoded file?
 
-- Fill out `--help` text
 - Put on GitHub?
     - Add a smoke test and CI
