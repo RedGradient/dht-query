@@ -120,6 +120,29 @@ class IPParam(click.ParamType):
         return "IP"
 
 
+class BytesParam(click.ParamType):
+    name = "bytes"
+
+    def convert(
+        self,
+        value: str | bytes,
+        param: click.Parameter | None,
+        ctx: click.Context | None,
+    ) -> bytes:
+        if isinstance(value, str):
+            try:
+                return bytes.fromhex(value)
+            except ValueError as e:
+                self.fail(f"{value!r}: {e}", param, ctx)
+        else:
+            return value
+
+    def get_metavar(
+        self, param: click.Parameter, ctx: click.Context | None = None  # noqa: U100
+    ) -> str:
+        return "HEXBYTES"
+
+
 @click.group(context_settings={"help_option_names": ["-h", "--help"]})
 def main() -> None:
     """Query the DHT"""
@@ -226,6 +249,41 @@ def find_node(
         if want6:
             want.append(b"n6")
         query[b"a"][b"want"] = want
+    reply = chat(addr, bencode(query), timeout=timeout)
+    msg = convert_reply(unbencode(reply))
+    pprint(msg)
+
+
+@main.command()
+@click.option(
+    "-t",
+    "--timeout",
+    type=float,
+    default=DEFAULT_TIMEOUT,
+    help="Maximum number of seconds to wait for a reply to a query",
+    show_default=True,
+)
+@click.argument("addr", type=InetAddrParam())
+@click.argument("info_hash", type=InfoHashParam())
+@click.argument("port", type=int)
+@click.argument("token", type=BytesParam())
+def announce_peer(
+    addr: InetAddr, info_hash: InfoHash, port: int, token: bytes, timeout: float
+) -> None:
+    """Send an "announce_peer" query to a node and pretty-print the decoded response"""
+    query: dict[bytes, Any] = {
+        b"t": gen_transaction_id(),
+        b"y": b"q",
+        b"q": b"announce_peer",
+        b"a": {
+            b"id": bytes(get_node_id()),
+            b"info_hash": bytes(info_hash),
+            b"port": port,
+            b"token": token,
+        },
+        b"v": CLIENT,
+        b"ro": 1,
+    }
     reply = chat(addr, bencode(query), timeout=timeout)
     msg = convert_reply(unbencode(reply))
     pprint(msg)
