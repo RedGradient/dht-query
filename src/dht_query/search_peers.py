@@ -349,8 +349,10 @@ async def recv_task(
                 anyio.ClosedResourceError,
                 anyio.EndOfStream,
                 anyio.BrokenResourceError,
-            ):
-                await sender.send(FatalError(RuntimeError("Local UDP socket closed")))
+            ) as e:
+                e2 = RuntimeError("Local UDP socket closed")
+                e2.__cause__ = e
+                await sender.send(FatalError(e2))
             except OSError as e:
                 e2 = RuntimeError("Error reading from UDP socket")
                 e2.__cause__ = e
