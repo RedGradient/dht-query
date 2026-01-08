@@ -15,7 +15,6 @@ from .types import InetAddr, InfoHash, Node, NodeId
 from .util import (
     convert_reply,
     get_default_bootstrap_nodes,
-    get_node_id,
     quantify,
 )
 
@@ -27,11 +26,12 @@ log = logging.getLogger(__name__)
 @dataclass
 class SearchPeers:
     info_hash: InfoHash
+    node_id: NodeId
     timeout: float = DEFAULT_TIMEOUT
     closest: int = DEFAULT_CLOSEST
     bootstrap: list[InetAddr] = field(default_factory=get_default_bootstrap_nodes)
 
-    async def create_session(self, node_id: NodeId) -> Session:
+    async def create_session(self) -> Session:
         ipv4 = await create_udp_socket(family=socket.AF_INET)
         ipv6 = await create_udp_socket(family=socket.AF_INET6)
         (event_sender, event_receiver) = create_memory_object_stream[
@@ -39,7 +39,6 @@ class SearchPeers:
         ]()
         return Session(
             search=self,
-            node_id=node_id,
             ipv4=ipv4,
             ipv6=ipv6,
             event_sender=event_sender,
@@ -49,7 +48,7 @@ class SearchPeers:
     async def run(self) -> set[InetAddr]:
         nodes = NodeTable(self.info_hash)
         peers = set()
-        async with await self.create_session(get_node_id()) as s:
+        async with await self.create_session() as s:
             for addr in self.bootstrap:
                 bn = BootstrapNode(addr)
                 log.info('Issuing "get_peers" query to %s ...', bn)
@@ -92,7 +91,6 @@ class SearchPeers:
 @dataclass
 class Session(AsyncResource):
     search: SearchPeers
-    node_id: NodeId
     ipv4: UDPSocket
     ipv6: UDPSocket
     ipv4_recv_task: asyncio.Task[None] = field(init=False)
@@ -144,7 +142,7 @@ class Session(AsyncResource):
             b"y": b"q",
             b"q": b"get_peers",
             b"a": {
-                b"id": bytes(self.node_id),
+                b"id": bytes(self.search.node_id),
                 b"info_hash": bytes(info_hash),
                 b"want": [b"n4", b"n6"],
             },

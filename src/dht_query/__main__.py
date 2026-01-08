@@ -485,6 +485,7 @@ def search_peers(
     )
     search = SearchPeers(
         info_hash=info_hash,
+        node_id=get_node_id(),
         timeout=timeout,
         closest=closest,
     )
