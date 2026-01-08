@@ -1,7 +1,7 @@
 from __future__ import annotations
 from dataclasses import dataclass
 from functools import total_ordering
-from ipaddress import IPv4Address, IPv6Address
+from ipaddress import IPv4Address, IPv6Address, ip_address
 import re
 import socket
 from typing import Any
@@ -34,15 +34,8 @@ class InetAddr:
         return cls(host=host, port=port)
 
     @classmethod
-    def from_pair(cls, host_str: str, port: int) -> InetAddr:
-        host: str | IPv4Address | IPv6Address
-        if re.fullmatch(IPV4_REGEX, host_str):
-            host = IPv4Address(host_str)
-        elif re.fullmatch(IPV6_REGEX, host_str):
-            host = IPv6Address(host_str)
-        else:
-            host = host_str
-        return cls(host=host, port=port)
+    def from_ipstr_port(cls, ipstr: str, port: int) -> InetAddr:
+        return cls(host=ip_address(ipstr), port=port)
 
     @classmethod
     def from_compact(cls, bs: bytes) -> InetAddr:

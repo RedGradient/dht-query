@@ -155,7 +155,7 @@ class Session(AsyncResource):
             (family, ip, port) = addr.resolve()
         else:
             (family, ip, port) = sendto.address.resolve()
-            addr = InetAddr.from_pair(ip, port)
+            addr = InetAddr.from_ipstr_port(ip, port)
         self.addr2node[addr] = sendto
         if family is socket.AF_INET:
             s = self.ipv4
@@ -359,5 +359,5 @@ async def recv_task(
                 await sender.send(FatalError(e2))
             else:
                 await sender.send(
-                    Message(content=content, sender=InetAddr.from_pair(ip, port))
+                    Message(content=content, sender=InetAddr.from_ipstr_port(ip, port))
                 )

@@ -1,10 +1,9 @@
 from __future__ import annotations
 from binascii import crc32
-from ipaddress import IPv4Address, IPv6Address
+from ipaddress import IPv4Address, IPv6Address, ip_address
 import logging
 from pprint import pprint
 import random
-import re
 import socket
 import sys
 from typing import IO, Any
@@ -12,7 +11,7 @@ import anyio
 import click
 import colorlog
 from .bencode import bencode, unbencode
-from .consts import CLIENT, DEFAULT_TIMEOUT, IPV4_REGEX, IPV6_REGEX, UDP_PACKET_LEN
+from .consts import CLIENT, DEFAULT_TIMEOUT, UDP_PACKET_LEN
 from .search_peers import DEFAULT_CLOSEST, SearchPeers
 from .types import InetAddr, InfoHash, NodeId
 from .util import (
@@ -104,12 +103,7 @@ class IPParam(click.ParamType):
     ) -> IPv4Address | IPv6Address:
         if isinstance(value, str):
             try:
-                if re.fullmatch(IPV4_REGEX, value):
-                    return IPv4Address(value)
-                elif re.fullmatch(IPV6_REGEX, value):
-                    return IPv6Address(value)
-                else:
-                    raise ValueError("not an IP address")
+                return ip_address(value)
             except ValueError as e:
                 self.fail(f"{value!r}: {e}", param, ctx)
         else:
