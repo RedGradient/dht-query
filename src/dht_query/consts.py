@@ -24,3 +24,9 @@ IPV6_REGEX = r"""(?ax:
     )
     (?:%[^%]+)?
 )"""
+
+DEFAULT_BOOTSTRAP_NODES = [
+    "dht.transmissionbt.com:6881",
+    "relay.pkarr.org:6881",
+    "router.bittorrent.com:6881",
+]

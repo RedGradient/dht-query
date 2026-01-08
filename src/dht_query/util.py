@@ -6,7 +6,7 @@ from pathlib import Path
 import random
 from typing import Any
 from platformdirs import user_state_path
-from .consts import TRANSACTION_ID_LEN
+from .consts import DEFAULT_BOOTSTRAP_NODES, TRANSACTION_ID_LEN
 from .types import InetAddr, InfoHash, Node, NodeId, PrettyBytes
 
 
@@ -144,3 +144,7 @@ def for_json(obj: Any) -> Any:
         return obj.hex()
     else:
         raise TypeError(type(obj).__name__)
+
+
+def get_default_bootstrap_nodes() -> list[InetAddr]:
+    return [InetAddr.parse(n) for n in DEFAULT_BOOTSTRAP_NODES]
