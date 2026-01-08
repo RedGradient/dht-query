@@ -1,10 +1,9 @@
 from __future__ import annotations
 from binascii import crc32
-from ipaddress import IPv4Address, IPv6Address
+from ipaddress import IPv4Address, IPv6Address, ip_address
 import logging
 from pprint import pprint
 import random
-import re
 import socket
 import sys
 from typing import IO, Any
@@ -12,8 +11,8 @@ import anyio
 import click
 import colorlog
 from .bencode import bencode, unbencode
-from .consts import CLIENT, DEFAULT_TIMEOUT, IPV4_REGEX, IPV6_REGEX, UDP_PACKET_LEN
-from .search_peers import DEFAULT_BOOTSTRAP_NODE, DEFAULT_SIMILARITY_TARGET, SearchPeers
+from .consts import CLIENT, DEFAULT_TIMEOUT, UDP_PACKET_LEN
+from .search_peers import DEFAULT_CLOSEST, SearchPeers
 from .types import InetAddr, InfoHash, NodeId
 from .util import (
     convert_reply,
@@ -104,12 +103,7 @@ class IPParam(click.ParamType):
     ) -> IPv4Address | IPv6Address:
         if isinstance(value, str):
             try:
-                if re.fullmatch(IPV4_REGEX, value):
-                    return IPv4Address(value)
-                elif re.fullmatch(IPV6_REGEX, value):
-                    return IPv6Address(value)
-                else:
-                    raise ValueError("not an IP address")
+                return ip_address(value)
             except ValueError as e:
                 self.fail(f"{value!r}: {e}", param, ctx)
         else:
@@ -429,17 +423,19 @@ def set_node_id_cmd(ip: IPv4Address | IPv6Address | None) -> None:
 
 @main.command()
 @click.option(
-    "-a",
-    "--all-peers",
-    is_flag=True,
-    help="Print out all peers found rather than just those from the last response",
-)
-@click.option(
     "-B",
     "--bootstrap-node",
     type=InetAddrParam(),
-    default=DEFAULT_BOOTSTRAP_NODE,
     help="Make the initial query to the given node",
+    show_default=True,
+    multiple=True,
+)
+@click.option(
+    "-k",
+    "--closest",
+    type=int,
+    default=DEFAULT_CLOSEST,
+    help="How many closest nodes to the info hash to query",
     show_default=True,
 )
 @click.option(
@@ -448,17 +444,6 @@ def set_node_id_cmd(ip: IPv4Address | IPv6Address | None) -> None:
     type=click.File("w"),
     default="-",
     help="Write the peers to the given file instead of stdout",
-)
-@click.option(
-    "-s",
-    "--similarity",
-    type=int,
-    default=DEFAULT_SIMILARITY_TARGET,
-    help=(
-        "Don't stop until after peers are received from a node whose ID matches"
-        " the infohash in this many leading bits"
-    ),
-    show_default=True,
 )
 @click.option(
     "-t",
@@ -473,13 +458,11 @@ def search_peers(
     info_hash: InfoHash,
     outfile: IO[str],
     timeout: float,
-    similarity: int,
-    all_peers: bool,
-    bootstrap_node: InetAddr,
+    bootstrap_node: tuple[InetAddr, ...],
+    closest: int,
 ) -> None:
     """
-    Do a simple search for peers downloading the torrent with the given
-    infohash
+    Do a search for peers downloading the torrent with the given infohash
     """
     colorlog.basicConfig(
         format="%(log_color)s%(asctime)s [%(levelname)-8s] %(message)s",
@@ -496,12 +479,15 @@ def search_peers(
     )
     search = SearchPeers(
         info_hash=info_hash,
+        node_id=get_node_id(),
         timeout=timeout,
-        similarity_target=similarity,
-        all_peers=all_peers,
-        bootstrap_node=bootstrap_node,
+        closest=closest,
     )
+    if bootstrap_node:
+        search.bootstrap = list(bootstrap_node)
     peers = anyio.run(search.run)
+    if not peers:
+        sys.exit("No peers found")
     with outfile:
         for p in sorted(peers):
             print(p, file=outfile)
