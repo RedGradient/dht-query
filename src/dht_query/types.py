@@ -5,6 +5,7 @@ from ipaddress import IPv4Address, IPv6Address
 import re
 import socket
 from typing import Any
+from .consts import IPV4_REGEX, IPV6_REGEX
 
 
 @total_ordering
@@ -16,10 +17,10 @@ class InetAddr:
     @classmethod
     def parse(cls, s: str) -> InetAddr:
         host: str | IPv4Address | IPv6Address
-        if m := re.fullmatch(r"(\d+\.\d+\.\d+\.\d+):(\d+)", s):
+        if m := re.fullmatch(rf"({IPV4_REGEX}):(\d+)", s):
             host = IPv4Address(m[1])
             port = int(m[2])
-        elif m := re.fullmatch(r"\[([A-Fa-f0-9:]+)\]:(\d+)", s):
+        elif m := re.fullmatch(rf"\[({IPV6_REGEX})\]:(\d+)", s):
             host = IPv6Address(m[1])
             port = int(m[2])
         else:
@@ -35,9 +36,9 @@ class InetAddr:
     @classmethod
     def from_pair(cls, host_str: str, port: int) -> InetAddr:
         host: str | IPv4Address | IPv6Address
-        if re.fullmatch(r"\d+\.\d+\.\d+\.\d+", host_str):
+        if re.fullmatch(IPV4_REGEX, host_str):
             host = IPv4Address(host_str)
-        elif re.fullmatch(r"[A-Fa-f0-9:]+", host_str):
+        elif re.fullmatch(IPV6_REGEX, host_str):
             host = IPv6Address(host_str)
         else:
             host = host_str
