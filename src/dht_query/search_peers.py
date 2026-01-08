@@ -66,6 +66,10 @@ class SearchPeers:
                         )
                         peers.update(r.peers)
                         nodes.extend(r.nodes)
+                        for n in nodes.closest(self.closest):
+                            if n.address not in s.queried:
+                                log.info('Issuing "get_peers" query to %s ...', n)
+                                await s.query(n, self.info_hash)
                     case ErrorReply(sender, code, msg):
                         log.warning(
                             "%s replied with error message: code %d: %r",
@@ -81,10 +85,6 @@ class SearchPeers:
                         )
                     case FatalError(e):
                         raise e
-                for n in nodes.closest(self.closest):
-                    if n.address not in s.queried:
-                        log.info('Issuing "get_peers" query to %s ...', n)
-                        await s.query(n, self.info_hash)
         return peers
 
 
@@ -252,7 +252,6 @@ class Session(AsyncResource):
                             errmsg = elst[1].decode("utf-8", "surrogateescape")
                             return ErrorReply(sender=full_sender, code=code, msg=errmsg)
                         else:
-                            # TODO: Merge this into ErrorReply somehow:
                             return BadMessage(
                                 sender=full_sender,
                                 about="malformed error message",
