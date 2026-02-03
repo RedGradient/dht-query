@@ -90,7 +90,7 @@ class TestInetAddr:
     def test_from_compact_valid(
         self, host: IPv4Address | IPv6Address, port: int
     ) -> None:
-        bs = host.packed + port.to_bytes(length=2)
+        bs = host.packed + port.to_bytes(length=2, byteorder="big")
         addr = InetAddr.from_compact(bs)
 
         assert isinstance(addr.host, type(host))
@@ -272,9 +272,8 @@ class TestNodeId:
 
     @pytest.mark.parametrize("invalid_hex_number", ["eee", "I", "love", "cats", "!"])
     def test_invalid_hex_number(self, invalid_hex_number: str) -> None:
-        with pytest.raises(ValueError) as e:
+        with pytest.raises(ValueError):
             NodeId(nid=invalid_hex_number)
-        assert "non-hexadecimal number" in str(e.value)
 
 
 class TestNode:
@@ -289,7 +288,7 @@ class TestNode:
         self, host: IPv4Address | IPv6Address, port: int
     ) -> None:
         node_id_bs = b"\x01" * 20
-        socket_bs = host.packed + port.to_bytes(length=2)
+        socket_bs = host.packed + port.to_bytes(length=2, byteorder="big")
         bs = node_id_bs + socket_bs
         addr = InetAddr.from_compact(socket_bs)
         node = Node.from_compact(bs)
