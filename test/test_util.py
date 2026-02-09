@@ -117,7 +117,6 @@ class TestConvertReply:
     @pytest.mark.parametrize("value", [[], [b"only_one"]])
     def test_convert_reply_e_length_less_than_two(self, value: list) -> None:
         raw = {b"e": value}
-
         result = convert_reply(raw, strict=False)
         assert result["e"] == value
 
